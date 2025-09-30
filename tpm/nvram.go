@@ -21,6 +21,8 @@ var (
 	ErrTooMuchData = errors.New("Too much data written to TPM NVRAM")
 )
 
+type Handle tpmutil.Handle
+
 type nvoptions struct {
 	ownerHandle tpmutil.Handle
 	password    string
