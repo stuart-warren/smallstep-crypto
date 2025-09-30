@@ -117,8 +117,8 @@ func (t *TPM) NVDelete(ctx context.Context, index uint32, opts ...NVOption) (err
 }
 
 // LoadCertificateChain reads a chain of certificates from the TPM NVRAM at the specified index.
-func (t *TPM) LoadCertificateChain(ctx context.Context, index uint32) (chain []*x509.Certificate, err error) {
-	data, err := t.NVRead(ctx, index)
+func (t *TPM) LoadCertificateChain(ctx context.Context, index uint32, opts ...NVOption) (chain []*x509.Certificate, err error) {
+	data, err := t.NVRead(ctx, index, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (t *TPM) LoadCertificateChain(ctx context.Context, index uint32) (chain []*
 }
 
 // StoreCertificateChain writes a chain of certificates to the TPM NVRAM at the specified index.
-func (t *TPM) StoreCertificateChain(ctx context.Context, index uint32, chain []*x509.Certificate) (err error) {
+func (t *TPM) StoreCertificateChain(ctx context.Context, index uint32, chain []*x509.Certificate, opts ...NVOption) (err error) {
 	buf := new(bytes.Buffer)
 	for _, cert := range chain {
 		if _, err := buf.Write(cert.Raw); err != nil {
@@ -141,5 +141,5 @@ func (t *TPM) StoreCertificateChain(ctx context.Context, index uint32, chain []*
 		}
 	}
 
-	return t.NVWrite(ctx, index, buf.Bytes())
+	return t.NVWrite(ctx, index, buf.Bytes(), opts...)
 }
