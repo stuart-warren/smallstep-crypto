@@ -60,11 +60,11 @@ func TestNVReadWriteCertificateChain(t *testing.T) {
 	defer tpm.NVDelete(ctx, testNVRAMIndex)
 
 	// Write the certificate chain
-	err = tpm.WriteCertificateChain(ctx, testNVRAMIndex, chain)
+	err = tpm.StoreCertificateChain(ctx, testNVRAMIndex, chain)
 	require.NoError(t, err)
 
 	// Read the certificate chain
-	readChain, err := tpm.ReadCertificateChain(ctx, testNVRAMIndex)
+	readChain, err := tpm.LoadCertificateChain(ctx, testNVRAMIndex)
 	require.NoError(t, err)
 
 	// Validate the chain

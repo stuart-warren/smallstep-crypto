@@ -97,6 +97,7 @@ type TPMKMS struct {
 	permanentIdentifier              string
 	identityRenewalPeriodPercentage  int64
 	identityEarlyRenewalEnabled      bool
+	nvoptions                       []tpm.NVOption
 }
 
 type algorithmAttributes struct {
@@ -662,6 +663,14 @@ func (k *TPMKMS) LoadCertificateChain(req *apiv1.LoadCertificateChainRequest) ([
 		return nil, errors.New("loadCertificateChainRequest 'name' cannot be empty")
 	}
 
+	if k.usesNVRAM() {
+		chain, err := k.loadCertificateChainFromNVRAM(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed loading certificate chain from TPM NVRAM: %w", err)
+		}
+		return chain, nil
+	}
+
 	if k.usesWindowsCertificateStore() {
 		chain, err := k.loadCertificateChainFromWindowsCertificateStore(&apiv1.LoadCertificateRequest{
 			Name: req.Name,
@@ -803,6 +812,13 @@ func (k *TPMKMS) StoreCertificateChain(req *apiv1.StoreCertificateChainRequest) 
 		return errors.New("storeCertificateChainRequest 'name' cannot be empty")
 	case len(req.CertificateChain) == 0:
 		return errors.New("storeCertificateChainRequest 'certificateChain' cannot be empty")
+	}
+
+	if k.usesNVRAM() {
+		if err := k.storeCertificateChainToNVRAM(req); err != nil {
+			return fmt.Errorf("failed storing certificate chain to TPM NVRAM: %w", err)
+		}
+		return nil
 	}
 
 	if k.usesWindowsCertificateStore() {
