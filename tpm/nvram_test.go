@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"testing"
 
+	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/stretchr/testify/require"
 
 	"go.step.sm/crypto/keyutil"
@@ -51,16 +52,16 @@ func TestNVReadWriteCertificateChain(t *testing.T) {
 	leafCert, err := intermediateCA.SignCSR(leafCSR)
 	require.NoError(t, err)
 
-	chain := []*x509.Certificate{leafCert}
+	chain := []*x509.Certificate{rootCA.Root, intermediateCert, leafCert}
 	t.Logf("Certificate chain length: %d", len(chain))
 
 	// Define a test NVRAM index
-	const testNVRAMIndex uint32 = 0x1c00004 // A free index
+	const testNVRAMIndex uint32 = 0x1500016 // A free, 4-byte aligned index in owner hierarchy
 
 	defer tpm.NVDelete(ctx, testNVRAMIndex)
 
 	// Write the certificate chain
-	err = tpm.StoreCertificateChain(ctx, testNVRAMIndex, chain)
+	err = tpm.StoreCertificateChain(ctx, testNVRAMIndex, chain, WithOwnerHandle(tpm2.HandleOwner))
 	require.NoError(t, err)
 
 	// Read the certificate chain

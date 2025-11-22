@@ -66,7 +66,6 @@ func setNVOptions(opts ...NVOption) *nvoptions {
 	options := nvoptions{
 		ownerHandle: ownerHandle,
 		password:    emptyPass,
-		blockSize:   0,
 		attributes:  certAttr,
 	}
 	for _, o := range opts {
@@ -87,19 +86,28 @@ func (t *TPM) NVRead(ctx context.Context, index uint32, opts ...NVOption) (data 
 // NVWrite writes data to the TPM NVRAM at the specified index.
 func (t *TPM) NVWrite(ctx context.Context, index uint32, data []byte, opts ...NVOption) (err error) {
 
-	offset := uint16(0)
 	dataLen := uint16(len(data))
-	if dataLen > 1024 {
-		// not sure why there seems to be a 1024 byte limit (at least in sumulator)
-		return ErrTooMuchData
-	}
 	options := setNVOptions(opts...)
 	dataIndex := tpmutil.Handle(index)
+
+	_ = tpm2.NVUndefineSpace(t.rwc, options.password, options.ownerHandle, dataIndex)
+
 	if err := tpm2.NVDefineSpace(t.rwc, options.ownerHandle, dataIndex, options.password, options.password, nil, options.attributes, dataLen); err != nil {
 		return fmt.Errorf("Failed to DefineSpace: %w", err)
 	}
-	if err := tpm2.NVWrite(t.rwc, ownerHandle, dataIndex, emptyPass, data, offset); err != nil {
-		return fmt.Errorf("Failed to Write: %w", err)
+
+	maxChunk := uint16(512)
+
+	for offset := uint16(0); offset < dataLen; {
+		chunkSize := maxChunk
+		if dataLen-offset < maxChunk {
+			chunkSize = dataLen - offset
+		}
+		chunk := data[offset : offset+chunkSize]
+		if err := tpm2.NVWrite(t.rwc, ownerHandle, dataIndex, emptyPass, chunk, offset); err != nil {
+			return fmt.Errorf("Failed to Write: %w", err)
+		}
+		offset += chunkSize
 	}
 	readData, err := t.NVRead(ctx, index)
 	if err != nil {
